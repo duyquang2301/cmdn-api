@@ -27,18 +27,17 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Create and Start virtual environment and Install dependencies
+        working-directory: ./api-gateway
         run: |
-          uv run python -m venv antenv
-          source antenv/bin/activate
-          make install
+          uv venv
+          source .venv/bin/activate
+          uv pip install -r pyproject.toml
                 
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: |
-            .
-            !antenv/
+          path: api-gateway/
       
 
   deploy:
@@ -55,7 +54,6 @@ jobs:
           name: python-app
 
       - name: Create startup script
-        working-directory: ./api-gateway
         run: |
           echo '#!/bin/bash' > startup.sh
           echo 'export PYTHONPATH="/home/site/wwwroot/src:$PYTHONPATH"' >> startup.sh
@@ -75,7 +73,7 @@ jobs:
         with:
           app-name: 'cmdn-api-gateway'
           slot-name: 'Production'
-          package: ./api-gateway
+          package: .
 
       - name: Configure app
         run: |
