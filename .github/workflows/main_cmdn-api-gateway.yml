@@ -10,6 +10,10 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  PYTHON_VERSION: '3.12'
+  WORKING_DIR: './api-gateway'
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,26 +23,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python version
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ env.PYTHON_VERSION }}
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Create and Start virtual environment and Install dependencies
+      - name: Create virtual environment and install dependencies
+        working-directory: ${{ env.WORKING_DIR }}
         run: |
-          uv run python -m venv antenv
-          source antenv/bin/activate
-          make install
+          uv venv
+          uv sync --no-dev
                 
-      - name: Upload artifact for deployment jobs
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: |
-            .
-            !antenv/
+          path: deploy/
       
 
   deploy:
