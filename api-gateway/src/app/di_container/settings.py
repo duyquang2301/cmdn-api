@@ -47,8 +47,8 @@ class RedisSettings(BaseSettings):
 
     model_config = SettingsConfigDict(**_base_config("REDIS_"))
 
-    host: str
-    port: int = Field(ge=1, le=65535)
+    host: str = "localhost"
+    port: int = Field(default=6379, ge=1, le=65535)
     db: int = Field(default=0, ge=0)
     decode_responses: bool = True
 
@@ -83,10 +83,10 @@ class S3Settings(BaseSettings):
 
     model_config = SettingsConfigDict(**_base_config("S3_"))
 
-    bucket_name: str
-    region: str
-    access_key_id: str
-    secret_access_key: str
+    bucket_name: str = "cmdn-audio-transcription"
+    region: str = "ap-southeast-1"
+    access_key_id: str = "minioadmin"
+    secret_access_key: str = "minioadmin123"
     endpoint_url: str | None = None
 
 
@@ -95,8 +95,8 @@ class Auth0Settings(BaseSettings):
 
     model_config = SettingsConfigDict(**_base_config("AUTH0_"))
 
-    audience: str
-    issuer_base_url: str
+    audience: str = "https://default.auth0.com/api/v2/"
+    issuer_base_url: str = "https://default.auth0.com/"
     jwks_cache_ttl: int = Field(default=3600)
 
 
