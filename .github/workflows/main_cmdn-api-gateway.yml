@@ -58,7 +58,8 @@ jobs:
         working-directory: ./api-gateway
         run: |
           echo '#!/bin/bash' > startup.sh
-          echo 'cd src && python -m uvicorn app.run:make_app --factory --host 0.0.0.0 --port 8000' >> startup.sh
+          echo 'export PYTHONPATH="/home/site/wwwroot/src:$PYTHONPATH"' >> startup.sh
+          echo 'python -m uvicorn app.run:make_app --factory --host 0.0.0.0 --port 8000' >> startup.sh
           chmod +x startup.sh
       
       - name: Login to Azure
@@ -79,6 +80,5 @@ jobs:
       - name: Configure app
         run: |
           az webapp config set --name cmdn-api-gateway --resource-group cmdn-audio-rg --startup-file "startup.sh"
-          az webapp config appsettings set --name cmdn-api-gateway --resource-group cmdn-audio-rg --settings PYTHONPATH="/home/site/wwwroot/src"
           az webapp restart --name cmdn-api-gateway --resource-group cmdn-audio-rg
           
