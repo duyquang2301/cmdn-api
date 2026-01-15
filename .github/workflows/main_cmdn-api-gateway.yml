@@ -11,55 +11,18 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
+      id-token: write
       contents: read
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python version
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Create and Start virtual environment and Install dependencies
-        working-directory: ./api-gateway
-        run: |
-          uv venv
-          source .venv/bin/activate
-          uv pip install -r pyproject.toml
-                
-      - name: Upload artifact for deployment jobs
-        uses: actions/upload-artifact@v4
-        with:
-          name: python-app
-          path: api-gateway/
-      
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
-
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: python-app
-
-      - name: Create startup script
-        run: |
-          echo '#!/bin/bash' > startup.sh
-          echo 'export PYTHONPATH="/home/site/wwwroot/src:$PYTHONPATH"' >> startup.sh
-          echo 'python -m uvicorn app.run:make_app --factory --host 0.0.0.0 --port 8000' >> startup.sh
-          chmod +x startup.sh
-      
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -67,16 +30,25 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_ED276596099E4B9DBA587B6FC9EF1148 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_F8E14216809F47E5BB544324743A6348 }}
 
-      - name: 'Deploy to Azure Web App'
-        uses: azure/webapps-deploy@v3
-        id: deploy-to-webapp
-        with:
-          app-name: 'cmdn-api-gateway'
-          slot-name: 'Production'
-          package: .
-
-      - name: Configure app
+      - name: Build and push Docker image
+        working-directory: ./api-gateway
         run: |
-          az webapp config set --name cmdn-api-gateway --resource-group cmdn-audio-rg --startup-file "startup.sh"
+          # Login to Azure Container Registry (sẽ tạo nếu chưa có)
+          az acr login --name cmdnregistry || az acr create --resource-group cmdn-audio-rg --name cmdnregistry --sku Basic --admin-enabled true
+          az acr login --name cmdnregistry
+          
+          # Build and push
+          docker build -t cmdnregistry.azurecr.io/cmdn-api-gateway:${{ github.sha }} -t cmdnregistry.azurecr.io/cmdn-api-gateway:latest .
+          docker push cmdnregistry.azurecr.io/cmdn-api-gateway:${{ github.sha }}
+          docker push cmdnregistry.azurecr.io/cmdn-api-gateway:latest
+
+      - name: Deploy to Azure Web App
+        run: |
+          az webapp config container set \
+            --name cmdn-api-gateway \
+            --resource-group cmdn-audio-rg \
+            --docker-custom-image-name cmdnregistry.azurecr.io/cmdn-api-gateway:latest \
+            --docker-registry-server-url https://cmdnregistry.azurecr.io
+          
           az webapp restart --name cmdn-api-gateway --resource-group cmdn-audio-rg
           
