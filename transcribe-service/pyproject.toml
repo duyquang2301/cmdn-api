@@ -1,0 +1,119 @@
+[project]
+name = "transcribe-service"
+version = "0.1.0"
+description = "Audio transcription service"
+requires-python = ">=3.12"
+dependencies = [
+    "celery>=5.4.0",
+    "redis>=5.0.0",
+    "pydub>=0.25.1",
+    "sqlalchemy>=2.0.0",
+    "psycopg2-binary>=2.9.9",
+    "asyncpg>=0.29.0",
+    "requests>=2.31.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "librosa>=0.10.0",
+    "tqdm>=4.66.0",
+    "litellm>=1.52.0,<1.80.0",
+    "faster-whisper>=1.0.0",
+    "loguru>=0.7.0",
+    "boto3>=1.34.0",
+    "tenacity>=8.2.0",
+    "psutil>=5.9.0",
+    "av>=13.0.0,<14.0.0",
+]
+
+[project.optional-dependencies]
+mlx = [
+    "mlx-whisper>=0.4.3",
+]
+dev = [
+    "ruff==0.12.5",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[project.scripts]
+transcribe-worker = "src.tasks.worker:start_worker"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.ruff]
+line-length = 88
+preview = true
+
+[tool.ruff.format]
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint]
+select = [
+    "A",
+    "ARG",
+    "ASYNC",
+    "B",
+    "C4",
+    "C90",
+    "DTZ",
+    "E",
+    "ERA001",
+    "F",
+    "FLY",
+    "I",
+    "LOG",
+    "N",
+    "PERF",
+    "PL",
+    "PT",
+    "PTH",
+    "Q",
+    "RET",
+    "RSE",
+    "RUF",
+    "S",
+    "SIM",
+    "SLF",
+    "SLOT",
+    "T20",
+    "TCH",
+    "TID",
+    "UP",
+    "W",
+]
+ignore = [
+    "A002",      # Argument shadowing builtin (id, input are common in domain models)
+    "ARG001",    # Unused self in Celery tasks (required by Celery)
+    "ARG002",    # Unused method argument (sometimes for interface consistency)
+    "E402",      # Module import not at top (required for multiprocessing setup)
+    "E501",      # Line too long (formatter handles this)
+    "ERA001",    # Commented code (sometimes useful for reference)
+    "N818",
+    "PERF401",   # List comprehension (current style is clearer)
+    "PLR0913",
+    "PLR0917",
+    "PLR2004",   # Magic values
+    "PLR6201",   # Use set literal (tuple/list is fine for small membership tests)
+    "PLR6301",
+    "PTH123",
+    "RUF005",    # Iterable unpacking (current style is clear)
+    "S110",      # try-except-pass (sometimes acceptable for cleanup)
+    "SIM105",    # contextlib.suppress (try-except is clearer)
+    "TC001",
+    "TC002",
+    "TC003",
+    "TC006",
+    "UP015",
+    "UP042",     # StrEnum not available in Python 3.11
+    "UP046",     # Generic syntax
+    "UP047",     # Generic function syntax
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-wrap-aliases = true
+split-on-trailing-comma = true

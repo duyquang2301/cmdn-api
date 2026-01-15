@@ -1,0 +1,9 @@
+# Ignore everything
+**
+
+# Except
+!pyproject.toml
+!uv.lock
+!README.md
+!src/**
+!uploads/

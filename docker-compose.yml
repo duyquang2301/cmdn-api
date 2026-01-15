@@ -1,0 +1,170 @@
+services:
+  # Infrastructure
+  postgres:
+    image: postgres:${POSTGRES_VERSION:-16-alpine}
+    container_name: audio-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-audio_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-audio_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-audio_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-audio_user} -d ${POSTGRES_DB:-audio_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - audio-network
+
+  # rabbitmq:
+  #   image: rabbitmq:${RABBITMQ_VERSION:-3.13-management}
+  #   container_name: audio-rabbitmq
+  #   ports:
+  #     - "${RABBITMQ_PORT:-5672}:5672"
+  #     - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+  #   environment:
+  #     RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+  #     RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-admin123}
+  #   healthcheck:
+  #     test: ["CMD", "rabbitmq-diagnostics", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   volumes:
+  #     - rabbitmq_data:/var/lib/rabbitmq
+  #   networks:
+  #     - audio-network
+
+  redis:
+    image: redis:${REDIS_VERSION:-7-alpine}
+    container_name: audio-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_data:/data
+    networks:
+      - audio-network
+
+  minio:
+    image: minio/minio:${MINIO_VERSION:-latest}
+    container_name: audio-minio
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-minioadmin123}
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - minio_data:/data
+    networks:
+      - audio-network
+
+  minio-setup:
+    image: minio/mc:${MINIO_MC_VERSION:-latest}
+    container_name: audio-minio-setup
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set myminio http://minio:9000 ${S3_ACCESS_KEY_ID:-minioadmin} ${S3_SECRET_ACCESS_KEY:-minioadmin123};
+      mc mb myminio/${S3_BUCKET_NAME:-cmdn-audio-transcription} --ignore-existing;
+      mc anonymous set download myminio/${S3_BUCKET_NAME:-cmdn-audio-transcription};
+      exit 0;
+      "
+    networks:
+      - audio-network
+
+  # transcribe-service:
+  #   platform: ${DOCKER_PLATFORM:-linux/amd64}
+  #   build:
+  #     context: ./transcribe-service
+  #     dockerfile: Dockerfile
+  #   container_name: audio-transcribe
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - ./transcribe-service/src:/app/src
+  #     - ./transcribe-service/uploads:/app/uploads
+  #     - whisper_cache:/home/appuser/.cache/huggingface
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     rabbitmq:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - audio-network
+  #   restart: ${RESTART_POLICY:-unless-stopped}
+
+  # summarize-service:
+  #   platform: ${DOCKER_PLATFORM:-linux/amd64}
+  #   build:
+  #     context: ./summarize-service
+  #     dockerfile: Dockerfile
+  #   container_name: audio-summarize
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - ./summarize-service/src:/app/src
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     rabbitmq:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - audio-network
+  #   restart: ${RESTART_POLICY:-unless-stopped}
+
+  # api-gateway:
+  #   platform: ${DOCKER_PLATFORM:-linux/amd64}
+  #   build:
+  #     context: ./api-gateway
+  #     dockerfile: Dockerfile
+  #   container_name: audio-api-gateway
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "${API_GATEWAY_PORT:-8000}:8000"
+  #   volumes:
+  #     - ./api-gateway/src:/app/src
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     rabbitmq:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #     minio:
+  #       condition: service_healthy
+  #   networks:
+  #     - audio-network
+  #   restart: ${RESTART_POLICY:-unless-stopped}
+
+volumes:
+  postgres_data:
+  # rabbitmq_data:
+  redis_data:
+  minio_data:
+  whisper_cache:
+
+networks:
+  audio-network:
+    driver: bridge

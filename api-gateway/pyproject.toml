@@ -1,0 +1,190 @@
+[build-system]
+requires = ["hatchling>=1.13"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+sources = ["src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/app"]
+
+[project]
+name = "api-gateway"
+version = "0.1.0"
+description = "Audio Transcription API with Clean Architecture"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic==1.17.1",
+    "alembic-postgresql-enum==1.8.0",
+    "dishka==1.7.2",
+    "fastapi-error-map==0.9.8",
+    "fastapi==0.121.0",
+    "greenlet==3.3.0",
+    "orjson==3.11.4",
+    "psycopg[binary]==3.2.12",
+    "sqlalchemy[mypy]==2.0.44",
+    "uvicorn==0.38.0",
+    "uvloop==0.22.1",
+    "asyncpg>=0.31.0",
+    "aioboto3>=15.5.0",
+    "python-multipart>=0.0.21",
+    "celery>=5.6.0",
+    "redis>=7.1.0",
+    "pyjwt[crypto]>=2.10.1",
+    "requests>=2.32.5",
+    "httpx>=0.28.1",
+    "dotenv>=0.9.9",
+    "pydantic-settings>=2.12.0",
+    "mutagen>=1.47.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy==1.17.0",
+    "pre-commit==4.2.0",
+    "ruff==0.12.5",
+    "slotscheck==0.19.1",
+    { include-group = "test" },
+]
+test = [
+    "coverage==7.10.0",
+    "pytest==8.4.1",
+    "pytest-asyncio==1.1.0"
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+exclude_also = [
+    "if __name__ == .__main__.:",
+    '@(abc\.)?abstractmethod',
+    "pass",
+    '\.\.\.',
+    "from .*",
+    "import .*",
+    'logging\..*',
+    'log\..*',
+]
+
+[tool.coverage.run]
+source = ["src", ]
+omit = [
+    "**/__init__.py",
+    "**/alembic/**",
+]
+concurrency = [
+    "multiprocessing",
+    "thread",
+]
+parallel = true
+branch = true
+
+[tool.mypy]
+files = [
+    "config",
+    "src",
+]
+exclude = "^.*alembic.*$"
+strict = true
+ignore_missing_imports = true
+allow_subclassing_any = true
+disallow_untyped_defs = false
+plugins = [
+    "pydantic.mypy",
+    "sqlalchemy.ext.mypy.plugin",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", ]
+markers = ["slow", ]
+addopts = "-m 'not slow'"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 88
+preview = true
+
+[tool.ruff.format]
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint]
+select = [
+    "A",
+    "ARG",
+    "ASYNC",
+    "B",
+    "C4",
+    "C90",
+    "DTZ",
+    "E",
+    "ERA001",
+    "F",
+    "FLY",
+    "I",
+    "LOG",
+    "N",
+    "PERF",
+    "PL",
+    "PT",
+    "PTH",
+    "Q",
+    "RET",
+    "RSE",
+    "RUF",
+    "S",
+    "SIM",
+    "SLF",
+    "SLOT",
+    "T20",
+    "TCH",
+    "TID",
+    "UP",
+    "W",
+]
+ignore = [
+    "A002",      # Argument shadowing builtin (id, input are common in domain models)
+    "B008",      # Function call in argument defaults (FastAPI pattern)
+    "B904",      # raise from err (not always needed)
+    "C901",      # Function too complex (subjective)
+    "E501",      # Line too long (formatter handles this)
+    "LOG014",    # exc_info outside handler (false positive)
+    "N818",
+    "PLC0415",   # Import not at top (sometimes needed for circular imports)
+    "PLR0913",
+    "PLR0917",
+    "PLR2004",   # Magic values (255 for string length is clear)
+    "PLR6201",   # Use set literal (tuple is fine for small membership tests)
+    "PLW1514",   # Open without encoding (default utf-8 is fine)
+    "PLR6301",
+    "PTH123",
+    "RET504",    # Unnecessary assignment (sometimes clearer)
+    "RUF005",    # Iterable unpacking (current style is clear)
+    "RUF029",    # Async without await (FastAPI requires async)
+    "S104",      # Binding to 0.0.0.0 is intentional for Docker
+    "S105",      # Hardcoded password false positive
+    "TC001",
+    "TC002",
+    "TC003",
+    "TC006",
+    "UP007",     # Union syntax (current style is fine)
+    "UP015",
+    "UP042",     # StrEnum not available in Python 3.11
+    "UP046",     # Generic syntax (Python 3.12 style not yet stable)
+    "UP047",     # Generic function syntax
+]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-wrap-aliases = true
+split-on-trailing-comma = true
+
+[tool.ruff.lint.per-file-ignores]
+"src/app/infrastructure/persistence_sqla/alembic/**" = ["ALL", ]
+
+[tool.slotscheck]
+strict-imports = true
+exclude-modules = '''
+^app\.infrastructure\.persistence_sqla\.alembic
+'''
